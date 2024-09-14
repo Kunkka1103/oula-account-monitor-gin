@@ -205,7 +205,6 @@ type Overview struct {
 	Machines         []Machine
 }
 
-
 func runOnce(db *sql.DB, zkRushDB *sql.DB, subAccountName string, showDetails bool) string {
 	// 获取当前时间
 	now := time.Now()
@@ -294,7 +293,6 @@ func runOnce(db *sql.DB, zkRushDB *sql.DB, subAccountName string, showDetails bo
 	return res
 }
 
-
 func ConvertToShanghaiTime(timestamp sql.NullInt64, now time.Time) (time.Time, time.Duration, string) {
 	if !timestamp.Valid {
 		// 如果 last_commit_solution 是 null，返回无效状态
@@ -329,18 +327,39 @@ func showSubAccountRewards(db *sql.DB, subAccountName string) string {
 
 	// 查询收益明细，转换 created_at 为北京时间
 	rows, err = db.Query(`
-		SELECT created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai' AS created_at, reward, pay_status 
-		FROM distributor 
-		WHERE miner_account_id = (SELECT id FROM miner_account WHERE name = $1)
-		ORDER BY created_at DESC`, subAccountName)
+		SELECT
+    created_at AT TIME ZONE 'Asia/Shanghai' AS created_at,
+    reward,
+    pay_status
+FROM
+    distributor
+WHERE
+    miner_account_id = (SELECT id FROM miner_account WHERE name = $1)
+ORDER BY
+    created_at DESC;`, subAccountName)
 	if err != nil {
 		log.Printf("Error fetching reward records for sub-account %s: %v", subAccountName, err)
 		return ""
 	}
 	defer rows.Close()
 
+	var totalReward float64
+	err = db.QueryRow(`
+		SELECT COALESCE(SUM(reward), 0) as total_reward 
+		FROM distributor 
+		WHERE miner_account_id = (SELECT id FROM miner_account WHERE name = $1) 
+		AND status = 'verified'`, subAccountName).Scan(&totalReward)
+	if err != nil {
+		log.Printf("Error fetching total reward for sub-account %s: %v", subAccountName, err)
+		return res
+	}
+
+	// 显示总收益
+
 	// 构建HTML表格
 	res += `<h3>收益明细 - Reward Records</h3>`
+	res += fmt.Sprintf("<p><strong>总收益 (已验证) - Total Verified Reward: %.2f</strong></p>", totalReward)
+
 	res += `<table border="1" cellpadding="5" cellspacing="0">`
 	res += `<tr><th>日期 (Created At)</th><th>奖励 (Reward)</th><th>支付状态 (Pay Status)</th></tr>`
 
@@ -362,19 +381,6 @@ func showSubAccountRewards(db *sql.DB, subAccountName string) string {
 	res += `</table>` // 结束表格
 
 	// 查询总收益（已验证的收益）
-	var totalReward float64
-	err = db.QueryRow(`
-		SELECT COALESCE(SUM(reward), 0) as total_reward 
-		FROM distributor 
-		WHERE miner_account_id = (SELECT id FROM miner_account WHERE name = $1) 
-		AND status = 'verified'`, subAccountName).Scan(&totalReward)
-	if err != nil {
-		log.Printf("Error fetching total reward for sub-account %s: %v", subAccountName, err)
-		return res
-	}
-
-	// 显示总收益
-	res += fmt.Sprintf("<p><strong>总收益 (已验证) - Total Verified Reward: %.2f</strong></p>", totalReward)
 
 	return res
 }
