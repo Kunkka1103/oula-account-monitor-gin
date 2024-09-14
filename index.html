@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>账户监控</title>
+</head>
+<body>
+    <h1>账户监控</h1>
+
+    <h2>主账户</h2>
+    <form id="mainAccountForm">
+        <label for="mainAccountName">主账户邮箱：</label>
+        <input type="text" id="mainAccountName" name="mainAccountName" required><br><br>
+
+        <label for="showDetailsMain">显示详情：</label>
+        <input type="checkbox" id="showDetailsMain" name="showDetails"><br><br>
+
+        <button type="submit">提交</button>
+    </form>
+
+    <h2>子账户</h2>
+    <form id="subAccountForm">
+        <label for="subAccountName">子账户名称：</label>
+        <input type="text" id="subAccountName" name="subAccountName" required><br><br>
+
+        <label for="showDetailsSub">显示详情：</label>
+        <input type="checkbox" id="showDetailsSub" name="showDetails"><br><br>
+
+        <button type="submit">提交</button>
+    </form>
+
+    <div id="result"></div>
+
+<script>
+    // 主账户表单提交事件
+    document.getElementById('mainAccountForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const mainAccountName = document.getElementById('mainAccountName').value;
+        const showDetails = document.getElementById('showDetailsMain').checked;
+
+        fetch('/main-account', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `mainAccountName=${mainAccountName}&showDetails=${showDetails}`
+        }).then(response => response.json())
+          .then(data => document.getElementById('result').innerHTML = `<pre>${data.result}</pre>`);
+    });
+
+    // 子账户表单提交事件
+    document.getElementById('subAccountForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const subAccountName = document.getElementById('subAccountName').value;
+        const showDetails = document.getElementById('showDetailsSub').checked;
+
+        fetch('/sub-account', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `subAccountName=${subAccountName}&showDetails=${showDetails}`
+        }).then(response => response.json())
+          .then(data => document.getElementById('result').innerHTML = `<pre>${data.result}</pre>`);
+    });
+</script>
+
+</body>
+</html>
+
