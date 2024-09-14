@@ -206,82 +206,6 @@ type Overview struct {
 }
 
 
-
-//func runOnce(db *sql.DB, zkRushDB *sql.DB, subAccountName string, showDetails bool) string {
-//	// 获取当前时间
-//	now := time.Now()
-//
-//	// 概览信息
-//	overview, err := getOverview(db, subAccountName)
-//	if err != nil {
-//		log.Printf("Error fetching overview for %s: %v", subAccountName, err)
-//		return fmt.Sprintf("Error fetching overview for %s: %v", subAccountName, err)
-//	}
-//
-//	var mainAccountID, subAccountID int
-//	err = db.QueryRow(`
-//		SELECT u.id AS main_account_id, ma.id AS sub_account_id, u.email AS main_account_name
-//		FROM miner_account ma
-//		JOIN "user" u ON ma.main_user_id = u.id
-//		WHERE ma.name = $1`, subAccountName).Scan(&mainAccountID, &subAccountID, &overview.MainAccountName)
-//	if err != nil {
-//		log.Fatalf("Error fetching overview for %s: %v", subAccountName, err)
-//		return fmt.Sprintf("Error fetching overview for %s: %v", subAccountName, err)
-//	}
-//
-//	rewardRecord := showSubAccountRewards(db, subAccountName)
-//
-//	// 显示概览信息（添加中英文标注）
-//	res := fmt.Sprintf("#############################################\n") +
-//		fmt.Sprintf("子账户总览信息 - Sub-account Overview for %s(%d):\n", subAccountName, subAccountID) +
-//		fmt.Sprintf("主账户名称 - Main Account: %s(%d)\n", overview.MainAccountName, mainAccountID) +
-//		fmt.Sprintf("总机器数 - Total Machines: %d\n", overview.TotalMachines) +
-//		fmt.Sprintf("活跃机器数 - Active Machines: %d\n", overview.ActiveMachines) +
-//		fmt.Sprintf("不活跃机器数 - Inactive Machines: %d\n", overview.InactiveMachines) +
-//		fmt.Sprintf("失效机器数 - Failed Machines: %d\n", overview.FailedMachines) +
-//		fmt.Sprintf("无效机器数 - Invalid Machines: %d\n", overview.InvalidMachines) +
-//		fmt.Sprintf("%s\n", rewardRecord)
-//
-//	if showDetails {
-//		// 获取每台机器的详细信息
-//		rows, err := db.Query(`
-//			SELECT m.created_at, m.name, m.project, m.last_commit_solution
-//			FROM machine m
-//			JOIN miner_account ma ON m.miner_account_id = ma.id
-//			WHERE ma.name = $1`, subAccountName)
-//		if err != nil {
-//			log.Fatalf("Error fetching machine details for %s: %v", subAccountName, err)
-//		}
-//		defer rows.Close()
-//
-//		//fmt.Println("\n机器详细信息 - Machine Details:")
-//		res = res + fmt.Sprintf("\n机器详细信息 - Machine Details:\n")
-//		for rows.Next() {
-//			var machine Machine
-//			var lastCommitTimestamp sql.NullInt64
-//
-//			// 获取机器的创建时间、名称、项目和最后提交算力时间戳（允许为 null）
-//			err := rows.Scan(&machine.CreatedAt, &machine.Name, &machine.Project, &lastCommitTimestamp)
-//			if err != nil {
-//				log.Fatalf("Error scanning machine details for %s: %v", subAccountName, err)
-//			}
-//
-//			// 转换 last_commit_solution 为上海时间并计算时间差，如果为 null，状态为 Invalid
-//			lastCommitTime, timeDiff, status := ConvertToShanghaiTime(lastCommitTimestamp, now)
-//			machine.Status = status
-//
-//			// 输出机器详细信息，每台机器一行
-//			if lastCommitTimestamp.Valid {
-//				res += fmt.Sprintf("子账户: %s | 创建时间: %s | 机器名称: %s | 项目: %s | 最近提交时间: %s  | 时间差: %.0f 秒 | 状态: %s\n",
-//					subAccountName, machine.CreatedAt, machine.Name, machine.Project, lastCommitTime.Format("2006-01-02 15:04:05"), timeDiff.Seconds(), machine.Status)
-//			} else {
-//				res += fmt.Sprintf("子账户: %s | 创建时间: %s | 机器名称: %s | 项目: %s | 最近提交时间: 无效 | 状态: %s\n",
-//					subAccountName, machine.CreatedAt, machine.Name, machine.Project, machine.Status)
-//			}
-//		}
-//	}
-//	return res
-//}
 func runOnce(db *sql.DB, zkRushDB *sql.DB, subAccountName string, showDetails bool) string {
 	// 获取当前时间
 	now := time.Now()
@@ -398,66 +322,14 @@ const (
 	InactiveThreshold = 86400 // 24 hours
 )
 
-// showSubAccountRewards 查询子账户收益明细和总收益
-//func showSubAccountRewards(db *sql.DB, subAccountName string) string {
-//	var rows *sql.Rows
-//	var err error
-//	var res string
-//
-//	// 查询收益明细
-//	rows, err = db.Query(`
-//		SELECT created_at, reward, pay_status
-//		FROM distributor
-//		WHERE miner_account_id = (SELECT id FROM miner_account WHERE name = $1)
-//		ORDER BY created_at DESC`, subAccountName)
-//	if err != nil {
-//		log.Printf("Error fetching reward records for sub-account %s: %v", subAccountName, err)
-//		return ""
-//	}
-//	defer rows.Close()
-//
-//	// 构建结果字符串
-//	res += fmt.Sprintf("\n收益明细 - Reward Records for %s:\n", subAccountName)
-//	for rows.Next() {
-//		var createdAt time.Time
-//		var reward float64
-//		var payStatus string
-//
-//		err := rows.Scan(&createdAt, &reward, &payStatus)
-//		if err != nil {
-//			log.Printf("Error scanning reward records: %v", err)
-//			continue
-//		}
-//
-//		// 添加每一条收益记录到结果
-//		res += fmt.Sprintf("日期: %s | 奖励: %.2f | 支付状态: %s\n", createdAt.Format("2006-01-02 15:04:05"), reward, payStatus)
-//	}
-//
-//	// 查询总收益（已验证的收益）
-//	var totalReward float64
-//	err = db.QueryRow(`
-//		SELECT COALESCE(SUM(reward), 0) as total_reward
-//		FROM distributor
-//		WHERE miner_account_id = (SELECT id FROM miner_account WHERE name = $1)
-//		AND status = 'verified'`, subAccountName).Scan(&totalReward)
-//	if err != nil {
-//		log.Printf("Error fetching total reward for sub-account %s: %v", subAccountName, err)
-//		return res
-//	}
-//
-//	// 添加总收益到结果
-//	res += fmt.Sprintf("\n总收益 (已验证) - Total Verified Reward: %.2f\n", totalReward)
-//
-//	return res
-//}
 func showSubAccountRewards(db *sql.DB, subAccountName string) string {
 	var rows *sql.Rows
 	var err error
 	var res string
 
-	// 查询收益明细
+	// 查询收益明细，转换 created_at 为北京时间
 	rows, err = db.Query(`
-		SELECT created_at, reward, pay_status 
+		SELECT created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai' AS created_at, reward, pay_status 
 		FROM distributor 
 		WHERE miner_account_id = (SELECT id FROM miner_account WHERE name = $1)
 		ORDER BY created_at DESC`, subAccountName)
