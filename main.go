@@ -240,6 +240,10 @@ func runOnce(db *sql.DB, zkRushDB *sql.DB, subAccountName string, showDetails bo
 		fmt.Sprintf("<p>无效机器数 - Invalid Machines: %d</p>", overview.InvalidMachines) +
 		fmt.Sprintf("%s", rewardRecord)
 
+	// 添加小额提现申请记录
+	withdrawRecord := getWithdrawRecord(db, subAccountID)
+	res += withdrawRecord
+
 	// 如果显示详情
 	if showDetails {
 		// 获取每台机器的详细信息
@@ -293,6 +297,46 @@ func runOnce(db *sql.DB, zkRushDB *sql.DB, subAccountName string, showDetails bo
 	return res
 }
 
+// 获取小额提现申请记录
+func getWithdrawRecord(db *sql.DB, subAccountID int) string {
+	rows, err := db.Query(`
+		SELECT created_at, status, transaction_hash, token_id 
+		FROM min_withdraws 
+		WHERE miner_account_id = $1 
+		ORDER BY created_at DESC`, subAccountID)
+	if err != nil {
+		log.Printf("Error fetching withdraw records for sub-account %d: %v", subAccountID, err)
+		return ""
+	}
+	defer rows.Close()
+
+	// 构建小额提现记录的表格
+	var res string
+	res += `<h3>小额提现申请记录 - Withdraw Records</h3>`
+	res += `<table border="1" cellpadding="5" cellspacing="0">`
+	res += `<tr><th>日期 (Created At)</th><th>状态 (Status)</th><th>交易哈希 (Transaction Hash)</th><th>代币 ID (Token ID)</th></tr>`
+
+	// 遍历查询结果并添加到表格
+	for rows.Next() {
+		var createdAt time.Time
+		var status, transactionHash string
+		var tokenID int
+
+		err := rows.Scan(&createdAt, &status, &transactionHash, &tokenID)
+		if err != nil {
+			log.Printf("Error scanning withdraw record: %v", err)
+			continue
+		}
+
+		// 添加每一行记录到表格
+		res += fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%d</td></tr>",
+			createdAt.Format("2006-01-02 15:04:05"), status, transactionHash, tokenID)
+	}
+	res += `</table>` // 结束表格
+
+	return res
+}
+
 func ConvertToShanghaiTime(timestamp sql.NullInt64, now time.Time) (time.Time, time.Duration, string) {
 	if !timestamp.Valid {
 		// 如果 last_commit_solution 是 null，返回无效状态
@@ -335,6 +379,7 @@ FROM
     distributor
 WHERE
     miner_account_id = (SELECT id FROM miner_account WHERE name = $1)
+	AND project = 'ALEO'
 ORDER BY
     created_at DESC;`, subAccountName)
 	if err != nil {
