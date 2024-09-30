@@ -302,7 +302,7 @@ func getWithdrawRecord(db *sql.DB, subAccountID int) string {
 	rows, err := db.Query(`
 		SELECT created_at, status, transaction_hash, token_id
 		FROM mini_withdraw
-		WHERE miner_account_id = ?
+		WHERE miner_account_id = $1
 		ORDER BY created_at desc;`, subAccountID)
 	if err != nil {
 		log.Printf("Error fetching withdraw records for sub-account %d: %v", subAccountID, err)
