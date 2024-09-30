@@ -316,7 +316,7 @@ func getWithdrawRecord(db *sql.DB, subAccountID int) string {
 	var res string
 	res += `<h3>小额提现申请记录 - Withdraw Records</h3>`
 	res += `<table border="1" cellpadding="5" cellspacing="0">`
-	res += `<tr><th>日期 (Created At)</th><th>状态 (Status)</th><th>交易哈希 (Transaction Hash)</th><th>代币 ID (Token ID)</th></tr>`
+	res += `<tr><th>日期 (Created At)</th><th>状态 (Status)</th><th>交易哈希 (Transaction Hash)</th><th>Token ID</th></tr>`
 
 	// 遍历查询结果并添加到表格
 	for rows.Next() {
@@ -331,7 +331,7 @@ func getWithdrawRecord(db *sql.DB, subAccountID int) string {
 		}
 
 		// 添加每一行记录到表格
-		res += fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%d</td></tr>",
+		res += fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
 			createdAt.Format("2006-01-02 15:04:05"), status, transactionHash, tokenID)
 	}
 	res += `</table>` // 结束表格
