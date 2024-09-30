@@ -322,7 +322,7 @@ func getWithdrawRecord(db *sql.DB, subAccountID int) string {
 	for rows.Next() {
 		var createdAt time.Time
 		var status, transactionHash string
-		var tokenID int
+		var tokenID string
 
 		err := rows.Scan(&createdAt, &status, &transactionHash, &tokenID)
 		if err != nil {
