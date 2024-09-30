@@ -299,13 +299,15 @@ func runOnce(db *sql.DB, zkRushDB *sql.DB, subAccountName string, showDetails bo
 
 // 获取小额提现申请记录
 func getWithdrawRecord(db *sql.DB, subAccountID int) string {
-	rows, err := db.Query(`
-		SELECT created_at, status, transaction_hash, token_id
-		FROM mini_withdraw
-		WHERE miner_account_id = $1
-		ORDER BY created_at desc;`, subAccountID)
+	sql := fmt.Sprintf("SELECT created_at, status, transaction_hash, token_id FROM mini_withdraw WHERE miner_account_id = %d ORDER BY created_at desc;", subAccountID)
+	//rows, err := db.Query(`
+	//	SELECT created_at, status, transaction_hash, token_id
+	//	FROM mini_withdraw
+	//	WHERE miner_account_id = $1
+	//	ORDER BY created_at desc;`, subAccountID)
+	rows, err := db.Query(sql)
 	if err != nil {
-		log.Printf("Error fetching withdraw records for sub-account %d: %v", subAccountID, err)
+		log.Printf("Error fetching withdraw records for sub-account %d: %v,sql:%s", subAccountID, err,sql)
 		return ""
 	}
 	defer rows.Close()
